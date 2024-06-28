@@ -1,56 +1,54 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 const axios = require('axios');
-const cors = require('cors');  // Importa el paquete cors
 require('dotenv').config();
-
 const app = express();
+const port = 5000;
 
+app.use(cors());
 app.use(bodyParser.json());
-app.use(cors());  // Usa el middleware cors
 
 app.post('/api/generateReport', async (req, res) => {
     const formData = req.body;
 
     try {
-        const response = await axios.post('https://api.openai.com/v1/completions', {
-            model: 'gpt-3.5-turbo', // Modelo actualizado a gpt-3.5-turbo
-            prompt: generatePrompt(formData),
-            max_tokens: 150
+        const filteredData = Object.keys(formData)
+            .filter(key => formData[key] === true || (formData[key] && typeof formData[key] === 'string' && formData[key].trim() !== ''))
+            .reduce((obj, key) => {
+                obj[key] = formData[key];
+                return obj;
+            }, {});
+
+        const prompt = generatePrompt(filteredData);
+
+        const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+            model: 'gpt-3.5-turbo', // o 'gpt-4' si tienes acceso
+            messages: [
+                { role: 'system', content: 'Eres un asistente que genera informes resumidos.' },
+                { role: 'user', content: prompt }
+            ],
+            max_tokens: 150,
         }, {
             headers: {
-                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                'Content-Type': 'application/json'
             }
         });
 
-        res.json({ informe: response.data.choices[0].text });
+        const summary = response.data.choices[0].message.content;
+
+        res.json({ informe: summary });
     } catch (error) {
         console.error('Error generating report:', error.response ? error.response.data : error.message);
-        if (error.response && error.response.data && error.response.data.error) {
-            res.status(500).send(`Error generating report: ${error.response.data.error.message}`);
-        } else {
-            res.status(500).send('Error generating report');
-        }
+        res.status(500).send('Error generating report');
     }
 });
 
-const generatePrompt = (formData) => {
-    let prompt = `Cliente: ${formData.cliente}\nTicket: ${formData.ticket}\nDescripción del Problema: ${formData.problema}\n`;
-
-    const fields = [
-        'configuracionWAN', 'optimizacionCanalesWiFi', 'cambioDNS', 'reinicioONT', 'reinicioMesh', 'sincronizacionMesh',
-        'cambioContraseñaWiFi', 'implementacionCableadoRed', 'ajusteAnchoBanda', 'verificacionCoberturaWiFi',
-        'revisionVelocidadDuplex', 'verificacionDispositivosAlternativos', 'configuracionVoIP', 'configuracionAppFonowin',
-        'derivacionNOC', 'derivacionVT', 'supervisorNOC', 'supervisorVT', 'recomendaciones', 'resultados', 'comentarios'
-    ];
-
-    fields.forEach(field => {
-        if (formData[field]) {
-            prompt += `${field.replace(/([A-Z])/g, ' $1')}: ${formData[field]}\n`;
-        }
-    });
-
-    return prompt;
+const generatePrompt = (data) => {
+    return `Genera un informe basado en la siguiente información:\n\n${JSON.stringify(data, null, 2)}`;
 };
 
-app.listen(5000, () => console.log('Server running on port 5000'));
+app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+});
