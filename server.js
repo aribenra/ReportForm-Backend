@@ -23,9 +23,9 @@ app.post('/api/generateReport', async (req, res) => {
         const prompt = generatePrompt(filteredData);
 
         const response = await axios.post('https://api.openai.com/v1/chat/completions', {
-            model: 'gpt-3.5-turbo', // o 'gpt-4' si tienes acceso
+            model: 'gpt-3.5-turbo',
             messages: [
-                { role: 'system', content: 'Eres un asistente que genera informes técnicos resumidos, descriptivos y estructurados.' },
+                { role: 'system', content: 'Eres un asistente que genera informes técnicos resumidos y estructurados.' },
                 { role: 'user', content: prompt }
             ],
             max_tokens: 150,
@@ -37,8 +37,9 @@ app.post('/api/generateReport', async (req, res) => {
         });
 
         const summary = response.data.choices[0].message.content;
+        const formattedReport = formatReport(filteredData, summary);
 
-        res.json({ informe: summary });
+        res.json({ informe: formattedReport });
     } catch (error) {
         console.error('Error generating report:', error.response ? error.response.data : error.message);
         res.status(500).send('Error generating report');
@@ -46,7 +47,7 @@ app.post('/api/generateReport', async (req, res) => {
 });
 
 const generatePrompt = (data) => {
-    return `Genera un informe detallado y estructurado basado en la siguiente información:
+    return `Genera un informe basado en la siguiente información:
 
 1. Descripción del Problema:
    Problema: ${data.problema}
@@ -63,6 +64,35 @@ const generatePrompt = (data) => {
 
 5. Recomendaciones:
    ${data.recomendaciones}`;
+};
+
+const formatReport = (data, summary) => {
+    return `
+        <h1>Informe de Resolución de Problemas de Conectividad</h1>
+        <div>
+            <h2>1. Descripción del Problema</h2>
+        </div>
+        <p>Problema: ${data.problema}</p>
+        <div>
+            <h2>2. Verificaciones y Acciones Realizadas</h2>
+        </div>
+        <p>Se llevaron a cabo las siguientes acciones para resolver el problema:</p>
+        <ul>
+            ${Object.keys(data).filter(key => key !== 'problema' && key !== 'recomendaciones' && key !== 'resultados' && key !== 'comentarios').map(key => `<li><span class="bold">${key.replace(/([A-Z])/g, ' $1').replace(/ W A N/g, ' WAN').replace(/ D N S/g, ' DNS').replace(/ O N T/g, ' ONT').replace(/ Wi Fi/g, ' WiFi').replace(/ Vo I P/g, ' VoIP').replace(/ App Fonowin/g, ' App Fonowin').toUpperCase()}:</span> Se realizó una configuración de la ${key} para optimizar la conexión a internet.</li>`).join('')}
+        </ul>
+        <div>
+            <h2>3. Resultados</h2>
+        </div>
+        <p>${data.resultados}</p>
+        <div>
+            <h2>4. Comentarios Adicionales</h2>
+        </div>
+        <p>${data.comentarios}</p>
+        <div>
+            <h2>5. Recomendaciones</h2>
+        </div>
+        <p>${data.recomendaciones}</p>
+    `;
 };
 
 app.listen(port, () => {
