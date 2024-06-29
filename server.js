@@ -47,8 +47,16 @@ app.post('/api/generateReport', async (req, res) => {
 });
 
 const generatePrompt = (data) => {
-    const actions = Object.keys(data).filter(key => key !== 'problema' && key !== 'recomendaciones' && key !== 'resultados' && key !== 'comentarios')
-        .map(key => `- ${key.replace(/([A-Z])/g, ' $1').replace(/ W A N/g, ' WAN').replace(/ D N S/g, ' DNS').replace(/ O N T/g, ' ONT').replace(/ Wi Fi/g, ' WiFi').replace(/ Vo I P/g, ' VoIP').replace(/ App Fonowin/g, ' App Fonowin').toUpperCase()}: Se realizó una configuración de la ${key} para optimizar la conexión a internet.`)
+    const actions = Object.keys(data).filter(key => key !== 'problema' && key !== 'recomendaciones' && key !== 'resultados' && key !== 'comentarios' && key !== 'supervisorNOC' && key !== 'supervisorVT')
+        .map(key => {
+            if (key === 'derivacionNOC') {
+                return `- Derivación a NOC: Se gestionó la derivación al área especializada para verificar problemas de configuración de red. Aprobado por el supervisor ${data.supervisorNOC}`;
+            } else if (key === 'derivacionVT') {
+                return `- Derivación a VT: Se gestionó una visita técnica presencial. Aprobado por el supervisor ${data.supervisorVT}`;
+            } else {
+                return `- ${key.replace(/([A-Z])/g, ' $1').replace(/ W A N/g, ' WAN').replace(/ D N S/g, ' DNS').replace(/ O N T/g, ' ONT').replace(/ Wi Fi/g, ' WiFi').replace(/ Vo I P/g, ' VoIP').replace(/ App Fonowin/g, ' App Fonowin').toUpperCase()}: Se realizó una configuración de la ${key} para optimizar la conexión a internet.`;
+            }
+        })
         .join('\n');
 
     return `Genera un informe basado en la siguiente información:
