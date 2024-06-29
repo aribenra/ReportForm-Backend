@@ -13,8 +13,9 @@ app.post('/api/generateReport', async (req, res) => {
     const formData = req.body;
 
     try {
+        // Filtrar los datos para excluir "cliente" y "ticket"
         const filteredData = Object.keys(formData)
-            .filter(key => formData[key] === true || (formData[key] && typeof formData[key] === 'string' && formData[key].trim() !== ''))
+            .filter(key => (formData[key] === true || (formData[key] && typeof formData[key] === 'string' && formData[key].trim() !== '')) && key !== 'cliente' && key !== 'ticket')
             .reduce((obj, key) => {
                 obj[key] = formData[key];
                 return obj;
@@ -28,7 +29,7 @@ app.post('/api/generateReport', async (req, res) => {
                 { role: 'system', content: 'Eres un asistente que genera informes técnicos resumidos y estructurados.' },
                 { role: 'user', content: prompt }
             ],
-            max_tokens: 150,
+            max_tokens: 300,  // Incrementar tokens para respuestas más largas
         }, {
             headers: {
                 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -36,10 +37,9 @@ app.post('/api/generateReport', async (req, res) => {
             }
         });
 
-        const summary = response.data.choices[0].message.content;
-        const formattedReport = formatReport(filteredData, summary);
+        const summary = response.data.choices[0].message.content.trim();
 
-        res.json({ informe: formattedReport });
+        res.json({ informe: summary });
     } catch (error) {
         console.error('Error generating report:', error.response ? error.response.data : error.message);
         res.status(500).send('Error generating report');
@@ -47,6 +47,10 @@ app.post('/api/generateReport', async (req, res) => {
 });
 
 const generatePrompt = (data) => {
+    const actions = Object.keys(data).filter(key => key !== 'problema' && key !== 'recomendaciones' && key !== 'resultados' && key !== 'comentarios')
+        .map(key => `- ${key.replace(/([A-Z])/g, ' $1').replace(/ W A N/g, ' WAN').replace(/ D N S/g, ' DNS').replace(/ O N T/g, ' ONT').replace(/ Wi Fi/g, ' WiFi').replace(/ Vo I P/g, ' VoIP').replace(/ App Fonowin/g, ' App Fonowin').toUpperCase()}: Se realizó una configuración de la ${key} para optimizar la conexión a internet.`)
+        .join('\n');
+
     return `Genera un informe basado en la siguiente información:
 
 1. Descripción del Problema:
@@ -54,7 +58,7 @@ const generatePrompt = (data) => {
 
 2. Verificaciones y Acciones Realizadas:
    Se llevaron a cabo las siguientes acciones para resolver el problema:
-   - ${Object.keys(data).filter(key => key !== 'problema' && key !== 'recomendaciones' && key !== 'resultados' && key !== 'comentarios').map(key => key.replace(/([A-Z])/g, ' $1').replace(/ W A N/g, ' WAN').replace(/ D N S/g, ' DNS').replace(/ O N T/g, ' ONT').replace(/ Wi Fi/g, ' WiFi').replace(/ Vo I P/g, ' VoIP').replace(/ App Fonowin/g, ' App Fonowin').toUpperCase()).join('\n   - ')}
+   ${actions}
 
 3. Resultados:
    ${data.resultados}
@@ -64,35 +68,6 @@ const generatePrompt = (data) => {
 
 5. Recomendaciones:
    ${data.recomendaciones}`;
-};
-
-const formatReport = (data, summary) => {
-    return `
-        <h1>Informe de Resolución de Problemas de Conectividad</h1>
-        <div>
-            <h2>1. Descripción del Problema</h2>
-        </div>
-        <p>Problema: ${data.problema}</p>
-        <div>
-            <h2>2. Verificaciones y Acciones Realizadas</h2>
-        </div>
-        <p>Se llevaron a cabo las siguientes acciones para resolver el problema:</p>
-        <ul>
-            ${Object.keys(data).filter(key => key !== 'problema' && key !== 'recomendaciones' && key !== 'resultados' && key !== 'comentarios').map(key => `<li><span class="bold">${key.replace(/([A-Z])/g, ' $1').replace(/ W A N/g, ' WAN').replace(/ D N S/g, ' DNS').replace(/ O N T/g, ' ONT').replace(/ Wi Fi/g, ' WiFi').replace(/ Vo I P/g, ' VoIP').replace(/ App Fonowin/g, ' App Fonowin').toUpperCase()}:</span> Se realizó una configuración de la ${key} para optimizar la conexión a internet.</li>`).join('')}
-        </ul>
-        <div>
-            <h2>3. Resultados</h2>
-        </div>
-        <p>${data.resultados}</p>
-        <div>
-            <h2>4. Comentarios Adicionales</h2>
-        </div>
-        <p>${data.comentarios}</p>
-        <div>
-            <h2>5. Recomendaciones</h2>
-        </div>
-        <p>${data.recomendaciones}</p>
-    `;
 };
 
 app.listen(port, () => {
