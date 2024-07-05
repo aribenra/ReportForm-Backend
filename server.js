@@ -26,7 +26,7 @@ app.post('/api/generateReport', async (req, res) => {
         const response = await axios.post('https://api.openai.com/v1/chat/completions', {
             model: 'gpt-3.5-turbo',
             messages: [
-                { role: 'system', content: 'Eres un asistente que genera informes técnicos resumidos y estructurados.' },
+                { role: 'system', content: 'Eres un asistente que genera informes técnicos resumidos y estructurados. Utiliza los siguientes datos para generar el informe en un formato específico con secciones claramente definidas: Descripción del Problema, Verificaciones y Acciones Realizadas, Resultados, Comentarios Adicionales. Asegúrate de solo incluir las secciones y campos que contengan información proporcionada. Formatea la respuesta como un informe técnico.' },
                 { role: 'user', content: prompt }
             ],
             max_tokens: 300,  // Incrementar tokens para respuestas más largas
